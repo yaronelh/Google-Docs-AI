@@ -98,20 +98,26 @@ function replaceSelectedText(newText) {
 }
 
 // Main function to handle OpenAI API calls
-function callOpenAI(originalText, prompt) {
-  // Provide a 'prediction' value that is the same as the original text.
-  // This signals to the model to make minimal changes from the original.
+function callOpenAI(context, userInstruction, selectedText) {
   const data = {
     model: 'gpt-4o',
     messages: [
-      { role: 'user', content: prompt }
+      { 
+        role: 'system', 
+        content: context 
+      },
+      {
+        role: 'user',
+        content: `${userInstruction}`
+      }
     ],
+
     temperature: 0.7,
     max_tokens: 1000,
-    // The prediction feature is in beta and may not be available on all accounts
+
     prediction: {
       type: 'content',
-      content: originalText
+      content: selectedText
     }
   };
 
@@ -135,14 +141,15 @@ function callOpenAI(originalText, prompt) {
   }
 }
 
+
 // Function to improve writing with context
 function improveWritingWithContext(context) {
   const selection = getSelectedText();
   if (!selection) return;
 
   try {
-    const prompt = `${context}\n\nGo over the text, check it for grammatical and punctuation errors and correct them, maintain as much of the text as possible to preserve the tone of voice, and make sure to not change the meaning of the text: ${selection.text}`;
-    const improvedText = callOpenAI(selection.text, prompt);
+    const prompt = `Go over the text, check it for grammatical and punctuation errors and correct them, maintain as much of the text as possible to preserve the tone of voice, and make sure to not change the meaning of the text:\n\n${selection.text}`;
+    const improvedText = callOpenAI(context, prompt, selection.text);
     if (improvedText) {
       replaceSelectedText(improvedText);
     }
@@ -157,8 +164,8 @@ function processCustomPromptWithContext(context, customPrompt) {
   if (!selection) return;
 
   try {
-    const prompt = `${context}\n\n${customPrompt}: ${selection.text}`;
-    const improvedText = callOpenAI(selection.text, prompt);
+    const prompt = `${customPrompt}:\n\n${selection.text}`;
+    const improvedText = callOpenAI(context, prompt, selection.text);
     if (improvedText) {
       replaceSelectedText(improvedText);
     }
@@ -178,69 +185,119 @@ function showSidebar() {
 // Sidebar HTML content
 function getSidebarHTML() {
   return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <base target="_top">
-        <style>
-          body { font-family: Arial, sans-serif; margin: 10px; }
-          .button { 
-            background-color: #4285f4; 
-            color: white; 
-            padding: 8px 16px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            margin: 5px 0;
-            width: 100%;
-          }
-          .button:hover { background-color: #357abd; }
-          .input-area { width: calc(100% - 10px); height: auto; margin: auto; padding:5px;}
-          .section { margin-top:20px;}
-        </style>
-      </head>
-      <body>
-        <div class="section">
-          <h3>Context</h3>
-          <textarea id="contextInput" class="input-area" placeholder="Enter context here..."></textarea>
-        </div>
+   <!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: "Roboto", Arial, sans-serif; 
+        margin: 10px;
+        background-color: #ffffff;
+        color: #202124;
+      }
 
-        <div class="section">
-          <h3>Custom Prompt (Optional)</h3>
-          <textarea id="customPrompt" class="input-area" placeholder="Enter your custom instruction..."></textarea>
-        </div>
+      h3 {
+        color: #185abc;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
 
-        <div class="section">
-          <h3>Actions</h3>
-          <button class="button" onclick="runRephrase()">Rephrase</button>
-          <button class="button" onclick="runImprove()">Improve Writing</button>
-          <button class="button" onclick="runMakeFormal()">Make Formal</button>
-          <button class="button" onclick="runCustomPrompt()">Execute Custom Prompt</button>
-        </div>
+      .description {
+        color: #5f6368;
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
 
-        <script>
-          function getContextAndPrompt() {
-            const context = document.getElementById('contextInput').value || '';
-            const customPrompt = document.getElementById('customPrompt').value || '';
-            return { context, customPrompt };
-          }
+      .button {
+        background-color: #4285f4; 
+        color: white; 
+        padding: 8px 16px; 
+        border: none; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        margin: 5px 0;
+        width: 100%;
+        font-size: 14px;
+      }
 
-          function runImprove() {
-            const { context } = getContextAndPrompt();
-            google.script.run.improveWritingWithContext(context);
-          }
+      .button:hover {
+        background-color: #357abd;
+      }
 
-          function runCustomPrompt() {
-            const { context, customPrompt } = getContextAndPrompt();
-            if (customPrompt) {
-              google.script.run.processCustomPromptWithContext(context, customPrompt);
-            } else {
-              alert('Please enter a custom prompt.');
-            }
-          }
-        </script>
-      </body>
-    </html>
+      .input-area {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 5px;
+        min-height: 60px;
+        font-size: 13px;
+        border: 1px solid #dadce0;
+        border-radius: 4px;
+        resize: vertical;
+        margin-bottom: 8px;
+      }
+
+      .section {
+        margin-top: 20px;
+      }
+
+      .section h3 {
+        margin-top: 0; 
+      }
+
+      @media (max-width: 400px) {
+        body {
+          margin: 5px;
+        }
+        .section {
+          margin-top: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="section">
+      <h3>Context</h3>
+      <div class="description">This is usually referred to as the system section of the prompt.</div>
+      <textarea id="contextInput" class="input-area" placeholder="Enter context here..."></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Custom Prompt (Optional)</h3>
+      <div class="description">Provide any additional instructions to apply.</div>
+      <textarea id="customPrompt" class="input-area" placeholder="Enter your custom instruction..."></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Action on Selection</h3>
+      <button class="button" onclick="runImprove()">Improve Writing</button>
+      <button class="button" onclick="runCustomPrompt()">Execute Custom Prompt</button>
+    </div>
+
+    <script>
+      function getContextAndPrompt() {
+        const context = document.getElementById('contextInput').value || '';
+        const customPrompt = document.getElementById('customPrompt').value || '';
+        return { context, customPrompt };
+      }
+
+      function runImprove() {
+        const { context } = getContextAndPrompt();
+        google.script.run.improveWritingWithContext(context);
+      }
+
+      function runCustomPrompt() {
+        const { context, customPrompt } = getContextAndPrompt();
+        if (customPrompt) {
+          google.script.run.processCustomPromptWithContext(context, customPrompt);
+        } else {
+          alert('Please enter a custom prompt.');
+        }
+      }
+    </script>
+  </body>
+</html>
+
   `;
 }
 
@@ -249,6 +306,11 @@ function handleError(error) {
   Logger.log('Error: ' + error);
   DocumentApp.getUi().alert('An error occurred: ' + error.toString());
 }
+
+
+
+
+
 
 ```
 
