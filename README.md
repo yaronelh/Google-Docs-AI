@@ -31,6 +31,13 @@ function onOpen() {
     .addToUi();
 }
 
+function onOpen() {
+  const ui = DocumentApp.getUi(); // Or SpreadsheetApp.getUi(), SlidesApp.getUi(), etc.
+  ui.createMenu('AI Helper v1') // Name of the menu
+    .addItem('Show Sidebar', 'showSidebar') // Single clickable item
+    .addToUi(); // Add the menu to the UI
+}
+
 // Get selected text accurately
 function getSelectedText() {
   const selection = DocumentApp.getActiveDocument().getSelection();
@@ -192,7 +199,7 @@ function getSidebarHTML() {
     <style>
       body {
         font-family: "Roboto", Arial, sans-serif; 
-        margin: 10px;
+        margin: 12px;
         background-color: #ffffff;
         color: #202124;
       }
@@ -229,49 +236,50 @@ function getSidebarHTML() {
         width: 100%;
         box-sizing: border-box;
         padding: 5px;
-        min-height: 60px;
+        height: 180px;
         font-size: 13px;
         border: 1px solid #dadce0;
         border-radius: 4px;
-        resize: vertical;
         margin-bottom: 8px;
       }
 
       .section {
-        margin-top: 20px;
+        margin-top: 16px;
       }
 
       .section h3 {
         margin-top: 0; 
       }
 
-      @media (max-width: 400px) {
-        body {
-          margin: 5px;
-        }
-        .section {
-          margin-top: 10px;
-        }
+      .divider {
+        border: none; /* Removes default border */
+        height: 1px; /* Thickness of the line */
+        background-color: #dadce0; /* Light gray color for the line */
+        width: 100%; /* Full width */
+        margin: 12px 0; /* Top and bottom margin of 12px */
       }
     </style>
   </head>
   <body>
     <div class="section">
+      <div class="description">This tool helps you adjust your selected text using OpenAI's API, and is made for those who prefer to use other models besides Google Gemini.</div>
       <h3>Context</h3>
-      <div class="description">This is usually referred to as the system section of the prompt.</div>
-      <textarea id="contextInput" class="input-area" placeholder="Enter context here..."></textarea>
+      <div class="description">The context is usually referred to as the 'system' section of the prompt.</div>
+      <textarea id="contextInput" class="input-area" placeholder="Enter context/system prompt here..."></textarea>
     </div>
 
     <div class="section">
-      <h3>Custom Prompt (Optional)</h3>
-      <div class="description">Provide any additional instructions to apply.</div>
+      <h3>Custom Prompt</h3>
+      <div class="description">Write your own custom prompt to run on the selected text</div>
       <textarea id="customPrompt" class="input-area" placeholder="Enter your custom instruction..."></textarea>
+      <div class="description">Clicking 'Run' will execute your context and custom prompt on the selected text.</div>
+      <button class="button" onclick="runCustomPrompt()">Run</button>
     </div>
-
+    <hr class="divider">
     <div class="section">
-      <h3>Action on Selection</h3>
-      <button class="button" onclick="runImprove()">Improve Writing</button>
-      <button class="button" onclick="runCustomPrompt()">Execute Custom Prompt</button>
+      <h3>Presets</h3>
+      <div class="description">Uses your 'context' with a preset to refine the selected text.</div>
+      <button class="button" onclick="runImprove()">Improve Selected Text</button>
     </div>
 
     <script>
@@ -306,12 +314,6 @@ function handleError(error) {
   Logger.log('Error: ' + error);
   DocumentApp.getUi().alert('An error occurred: ' + error.toString());
 }
-
-
-
-
-
-
 ```
 
 
