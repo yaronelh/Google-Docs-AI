@@ -20,7 +20,7 @@ This setup allows you to work seamlessly with either OpenAI or Claude models in 
 
 ```js
 // Configuration
-const OPENAI_API_KEY = 'YOUR_API_KEY_HERE'
+const OPENAI_API_KEY = 'YOUR_API_KEY_HERE';
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 // Create main menu and context menu
@@ -28,9 +28,6 @@ function onOpen() {
   DocumentApp.getUi()
     .createMenu('AI helper v1')
     .addItem('Show Sidebar', 'showSidebar')
-    .addItem('Rephrase Selection', 'rephraseSelection')
-    .addItem('Improve Writing', 'improveWriting')
-    .addItem('Make Formal', 'makeFormal')
     .addToUi();
 }
 
@@ -101,23 +98,32 @@ function replaceSelectedText(newText) {
 }
 
 // Main function to handle OpenAI API calls
-function callOpenAI(text, instruction) {
-  const prompt = instruction + text;
-  
+function callOpenAI(originalText, prompt) {
+  // Provide a 'prediction' value that is the same as the original text.
+  // This signals to the model to make minimal changes from the original.
+  const data = {
+    model: 'gpt-4o',
+    messages: [
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    max_tokens: 1000,
+    // The prediction feature is in beta and may not be available on all accounts
+    prediction: {
+      type: 'content',
+      content: originalText
+    }
+  };
+
   const options = {
-    'method': 'post',
-    'headers': {
-      'Authorization': 'Bearer ' + OPENAI_API_KEY,
+    method: 'post',
+    headers: {
+      Authorization: 'Bearer ' + OPENAI_API_KEY,
       'Content-Type': 'application/json'
     },
-    'payload': JSON.stringify({
-      'model': 'GPT-4o',
-      'messages': [{'role': 'user', 'content': prompt}],
-      'temperature': 0.7,
-      'max_tokens': 1000
-    })
+    payload: JSON.stringify(data)
   };
-  
+
   try {
     const response = UrlFetchApp.fetch(OPENAI_API_URL, options);
     const jsonResponse = JSON.parse(response.getContentText());
@@ -129,13 +135,14 @@ function callOpenAI(text, instruction) {
   }
 }
 
-// Function to rephrase selected text
-function rephraseSelection() {
+// Function to improve writing with context
+function improveWritingWithContext(context) {
   const selection = getSelectedText();
   if (!selection) return;
-  
+
   try {
-    const improvedText = callOpenAI(selection.text, "Rephrase this text while maintaining its meaning: ");
+    const prompt = `${context}\n\nGo over the text, check it for grammatical and punctuation errors and correct them, maintain as much of the text as possible to preserve the tone of voice, and make sure to not change the meaning of the text: ${selection.text}`;
+    const improvedText = callOpenAI(selection.text, prompt);
     if (improvedText) {
       replaceSelectedText(improvedText);
     }
@@ -144,43 +151,14 @@ function rephraseSelection() {
   }
 }
 
-// Function to improve writing style
-function improveWriting() {
+// Process custom prompt with context
+function processCustomPromptWithContext(context, customPrompt) {
   const selection = getSelectedText();
   if (!selection) return;
-  
-  try {
-    const improvedText = callOpenAI(selection.text, "Improve this writing to make it more professional and clear: ");
-    if (improvedText) {
-      replaceSelectedText(improvedText);
-    }
-  } catch (error) {
-    handleError(error);
-  }
-}
 
-// Function to make text more formal
-function makeFormal() {
-  const selection = getSelectedText();
-  if (!selection) return;
-  
   try {
-    const formalText = callOpenAI(selection.text, "Convert this text to a more formal tone: ");
-    if (formalText) {
-      replaceSelectedText(formalText);
-    }
-  } catch (error) {
-    handleError(error);
-  }
-}
-
-// Process custom prompt from sidebar
-function processCustomPrompt(prompt) {
-  const selection = getSelectedText();
-  if (!selection) return;
-  
-  try {
-    const improvedText = callOpenAI(selection.text, prompt + ": ");
+    const prompt = `${context}\n\n${customPrompt}: ${selection.text}`;
+    const improvedText = callOpenAI(selection.text, prompt);
     if (improvedText) {
       replaceSelectedText(improvedText);
     }
@@ -217,37 +195,48 @@ function getSidebarHTML() {
             width: 100%;
           }
           .button:hover { background-color: #357abd; }
-          .input-area {
-            width: 100%;
-            height: 100px;
-            margin: 10px 0;
-            padding: 5px;
-          }
-          .section { margin: 15px 0; }
+          .input-area { width: calc(100% - 10px); height: auto; margin: auto; padding:5px;}
+          .section { margin-top:20px;}
         </style>
       </head>
       <body>
         <div class="section">
-          <h3>Selected Text Operations</h3>
-          <button class="button" onclick="google.script.run.rephraseSelection()">Rephrase</button>
-          <button class="button" onclick="google.script.run.improveWriting()">Improve</button>
-          <button class="button" onclick="google.script.run.makeFormal()">Make Formal</button>
+          <h3>Context</h3>
+          <textarea id="contextInput" class="input-area" placeholder="Enter context here..."></textarea>
         </div>
-        
+
         <div class="section">
-          <h3>Custom Prompt</h3>
+          <h3>Custom Prompt (Optional)</h3>
           <textarea id="customPrompt" class="input-area" placeholder="Enter your custom instruction..."></textarea>
-          <button class="button" onclick="runCustomPrompt()">Execute</button>
+        </div>
+
+        <div class="section">
+          <h3>Actions</h3>
+          <button class="button" onclick="runRephrase()">Rephrase</button>
+          <button class="button" onclick="runImprove()">Improve Writing</button>
+          <button class="button" onclick="runMakeFormal()">Make Formal</button>
+          <button class="button" onclick="runCustomPrompt()">Execute Custom Prompt</button>
         </div>
 
         <script>
+          function getContextAndPrompt() {
+            const context = document.getElementById('contextInput').value || '';
+            const customPrompt = document.getElementById('customPrompt').value || '';
+            return { context, customPrompt };
+          }
+
+          function runImprove() {
+            const { context } = getContextAndPrompt();
+            google.script.run.improveWritingWithContext(context);
+          }
+
           function runCustomPrompt() {
-            const prompt = document.getElementById('customPrompt').value;
-            google.script.run
-              .withSuccessHandler(() => {
-                document.getElementById('customPrompt').value = '';
-              })
-              .processCustomPrompt(prompt);
+            const { context, customPrompt } = getContextAndPrompt();
+            if (customPrompt) {
+              google.script.run.processCustomPromptWithContext(context, customPrompt);
+            } else {
+              alert('Please enter a custom prompt.');
+            }
           }
         </script>
       </body>
@@ -260,7 +249,6 @@ function handleError(error) {
   Logger.log('Error: ' + error);
   DocumentApp.getUi().alert('An error occurred: ' + error.toString());
 }
-
 
 ```
 
