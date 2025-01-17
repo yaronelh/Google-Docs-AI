@@ -26,16 +26,9 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 // Create main menu and context menu
 function onOpen() {
   DocumentApp.getUi()
-    .createMenu('AI helper v1')
+    .createMenu('AI Writing Assistant')
     .addItem('Show Sidebar', 'showSidebar')
     .addToUi();
-}
-
-function onOpen() {
-  const ui = DocumentApp.getUi(); // Or SpreadsheetApp.getUi(), SlidesApp.getUi(), etc.
-  ui.createMenu('AI Helper v1') // Name of the menu
-    .addItem('Show Sidebar', 'showSidebar') // Single clickable item
-    .addToUi(); // Add the menu to the UI
 }
 
 // Get selected text accurately
